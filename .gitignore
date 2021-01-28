@@ -9,3 +9,5 @@ conda
 !envs/*.yaml
 !rules
 !rules/*.smk
+!run.sh
+
