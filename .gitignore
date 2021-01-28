@@ -1,0 +1,11 @@
+*
+conda
+!config.yaml
+!Snakefile
+!LICENSE
+!README.md
+!.gitignore
+!envs
+!envs/*.yaml
+!rules
+!rules/*.smk

@@ -1,0 +1,12 @@
+name: crossmap
+channels:
+ - bioconda
+dependencies:
+ - python=3.6
+ - samtools
+ - bcftools
+ - gvcftools
+ - curl
+ - pip
+ - pip:
+   - CrossMap
