@@ -10,7 +10,7 @@ rule download_fa:
         fa="{refdir}/hg38.fa",
         fai="{refdir}/hg38.fa.fai"
     conda:
-	"../envs/crossmap.yaml"
+	    "../envs/crossmap.yaml"
     shell:
         "URL='https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.fa.gz' && "
         "wget $URL -O {wildcards.refdir}/hg38.fa.gz && "
@@ -22,5 +22,5 @@ rule download_chain:
         "{refdir}/hg19ToHg38.over.chain.gz"
     shell:
         "URL='http://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz' && "
-        "wget $URL -O {wildcards.refdir}/hg38.fa.gz"
+        "wget $URL -O {wildcards.refdir}/hg19ToHg38.over.chain.gz"
         
