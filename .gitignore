@@ -10,4 +10,5 @@ conda
 !rules
 !rules/*.smk
 !run.sh
+!dryrun.sh
 
