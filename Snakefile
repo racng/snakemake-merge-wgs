@@ -1,6 +1,6 @@
 configfile: "config.yaml"
 
-include: "rules/variants.smk"
+include: "rules/merge.smk"
 include: "rules/download.smk"
 
 rule all:
@@ -12,7 +12,7 @@ rule all:
         ancient(expand("{refdir}/hg19ToHg38.over.chain.gz", refdir=config['refdir'])),
 
         # Merged output per sample
-        expand("{outdir}/{sample}_exomep250_hg38.vcf.gz", 
+        expand("{outdir}/{sample}.var.exomep250_hg38.vcf.gz", 
             outdir=config['outdir'], sample=samples),
 
 
