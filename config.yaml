@@ -1,13 +1,13 @@
 # Configure input and output directories
-datadir: "/home/rng/genomes"
-refdir: "/home/rng/vcf"
+datadir: "/home/rng/covid/data/wgs"
+refdir: "/home/rng/reference"
 outdir: "/home/rng/covid/output/multiome"
 
 # Configure samplesheet input
-samples: "/home/rng/covid/data/multiome/20201221_samples_test.csv"
+samples: "/home/rng/covid/data/multiome/20201228_samples.csv"
 pooled_sample_col: "sample name"
 individual_sample_col: "PBMC sample origin"
 
 # Regex pattern for parsing patient id from the individual_sample_col in samplesheet
 # Backslash are special characters for YAML files
-regex: "(INCOV\\d{3})"
+regex: "(INCOV\\d{3}|\\d{4}BW)"
