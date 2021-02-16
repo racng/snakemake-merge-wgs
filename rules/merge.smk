@@ -3,7 +3,10 @@ import pandas as pd
 # Read sample sheet
 df = pd.read_csv(config["samples"], dtype=str)
 samples = list(df["sample name"].unique())
-
+# Filter samles:
+if len(config["include"]>0):
+    samples = config["include"]
+    
 def get_patients(wildcards):
     inds = df[config['pooled_sample_col']]==wildcards.sample
     s = df.loc[inds, config['individual_sample_col']]

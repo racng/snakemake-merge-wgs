@@ -7,6 +7,7 @@ outdir: "/home/rng/covid/output/multiome"
 samples: "/home/rng/covid/data/multiome/20201228_samples.csv"
 pooled_sample_col: "sample name"
 individual_sample_col: "PBMC sample origin"
+include: []
 
 # Regex pattern for parsing patient id from the individual_sample_col in samplesheet
 # Backslash are special characters for YAML files
