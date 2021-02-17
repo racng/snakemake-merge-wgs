@@ -23,15 +23,15 @@ def gvcfs_wrapper(wildcards):
 # Merge gvcf
 rule dbimport:
     input:
-        gvcfs=gvcfs_wrapper
+        gvcfs=get_patient_gvcf
     output:
         "{outdir}/{sample}_db"
     threads: config['threads']
     params:
-        regions=[f"-L {r}" for r in config['regions'].split(',')]
+        regions=[f" -L {r}" for r in config['regions'].split(',')]
     shell:
         "gatk GenomicsDBImport "
-        "{input.gvcfs} "
+        "$(echo {input.gvcfs} | sed 's/^/ -V /') " 
         "--genomicsdb-workspace-path {output} "
         "{input.regions} "
         "--max-num-intervals-to-import-in-parallel {threads}"
