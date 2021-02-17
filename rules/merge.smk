@@ -17,23 +17,21 @@ def get_patient_gvcf(wildcards):
     return [f"{config['datadir']}/{patient}.gvcf.gz" \
         for patient in get_patients(wildcards)]
 
-def gvcfs_wrapper(wildcards):
-    return [f"-V {f}" for f in get_patient_gvcf(wildcards)]
-
 # Merge gvcf
 rule dbimport:
     input:
         gvcfs=get_patient_gvcf
     output:
-        "{outdir}/{sample}_db"
+        directory("{outdir}/{sample}_db")
     threads: config['threads']
     params:
-        regions=[f" -L {r}" for r in config['regions'].split(',')]
+        regions=[f" -L {r}" for r in config['regions'].split(',')],
+        gvcfs=lambda wildcards, input: [f" -V {v}" for v in input["gvcfs"]]
     shell:
         "gatk GenomicsDBImport "
-        "$(echo {input.gvcfs} | sed 's/^/ -V /') " 
+        "{params.gvcfs} " 
         "--genomicsdb-workspace-path {output} "
-        "{input.regions} "
+        "{params.regions} "
         "--max-num-intervals-to-import-in-parallel {threads}"
 
 # Joint calling on merged database 
@@ -42,7 +40,7 @@ rule genotype:
         db="{outdir}/{sample}_db",
         fa=expand("{refdir}/hg19.fa", refdir=config['refdir'])
     output:
-        "{outdir}/{sample}.vcf.gz"
+        "{outdir}/{sample}.genotype.vcf.gz"
     shell:
         "gatk GenotypeGVCFs "
         "-R {input.fa} "
@@ -52,7 +50,7 @@ rule genotype:
 # Extract variants, remove indels
 rule extract_variants:
     input:
-        "{outdir}/{sample}.vcf.gz"
+        "{outdir}/{sample}.genotype.vcf.gz"
     output:
         "{outdir}/{sample}.var.vcf.gz"
     conda:
@@ -81,9 +79,9 @@ rule liftover:
     input:
         chain=expand("{refdir}/hg19ToHg38.over.chain.gz", refdir=config['refdir']),
         fa=expand("{refdir}/hg38.fa", refdir=config['refdir']),
-        vcf="{outdir}/{sample}.var.exomep250_hg19.vcf.gz"
+        vcf="{outdir}/{sample}.var.exonp250_hg19.vcf.gz"
     output:
-        tvcf=temp("{outdir}/{sample}.var.exomep250_hg38_temp.vcf"),
+        tvcf=temp("{outdir}/{sample}.var.exonp250_hg38_temp.vcf"),
     conda:
         "../envs/crossmap.yaml"
     shell:
@@ -92,12 +90,12 @@ rule liftover:
 # Remove troublesome KI27* contigs. Filter by regions.
 rule filter_regions:
     input:
-        tvcf="{outdir}/{sample}.var.exomep250_hg38_temp.vcf"
+        tvcf="{outdir}/{sample}.var.exonp250_hg38_temp.vcf"
     output:
-        tbcf=temp("{outdir}/{sample}.var.exomep250_hg38_temp.bcf"),
-        tbcfi=temp("{outdir}/{sample}.var.exomep250_hg38_temp.bcf.csi"),
-        vcf="{outdir}/{sample}.var.exomep250_hg38.vcf.gz",
-        index="{outdir}/{sample}.var.exomep250_hg38.vcf.gz.csi"
+        tbcf=temp("{outdir}/{sample}.var.exonp250_hg38_temp.bcf"),
+        tbcfi=temp("{outdir}/{sample}.var.exonp250_hg38_temp.bcf.csi"),
+        vcf="{outdir}/{sample}.var.exonp250_hg38.vcf.gz",
+        index="{outdir}/{sample}.var.exonp250_hg38.vcf.gz.csi"
     params:
         reg=config['regions']
     conda:
