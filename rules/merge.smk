@@ -4,7 +4,7 @@ import pandas as pd
 df = pd.read_csv(config["samples"], dtype=str)
 samples = list(df["sample name"].unique())
 # Filter samles:
-if len(config["include"]>0):
+if len(config["include"]) > 0:
     samples = config["include"]
     
 def get_patients(wildcards):
@@ -17,19 +17,23 @@ def get_patient_gvcf(wildcards):
     return [f"{config['datadir']}/{patient}.gvcf.gz" \
         for patient in get_patients(wildcards)]
 
+def gvcfs_wrapper(wildcards):
+    return [f"-V {f}" for f in get_patient_gvcf(wildcards)]
+
 # Merge gvcf
 rule dbimport:
     input:
-        gvcfs=[f"-V {f}" for f in get_patient_gvcf],
-        regions=[f"-L {r}" for r in config['regions'].split(',')]
+        gvcfs=gvcfs_wrapper
     output:
         "{outdir}/{sample}_db"
     threads: config['threads']
+    params:
+        regions=[f"-L {r}" for r in config['regions'].split(',')]
     shell:
         "gatk GenomicsDBImport "
-        "{gvcfs} "
+        "{input.gvcfs} "
         "--genomicsdb-workspace-path {output} "
-        "{regions} "
+        "{input.regions} "
         "--max-num-intervals-to-import-in-parallel {threads}"
 
 # Joint calling on merged database 
