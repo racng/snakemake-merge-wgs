@@ -56,19 +56,31 @@ ex. `"(INCOV\\d{3}|\\d{4}BW)"` would parse out `INCOV001, INCOV002, INCOV003, IN
 ex. `"chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX,chrY"`
 - `threads`: Number of parallel threads allowed (used by GenomicsDBImport)
 
-### Step 3: Execute workflow
+### Step 3: Install Snakemake
 
-#### Using conda:
+Install Snakemake using [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) and [mamba](https://github.com/mamba-org/mamba):
+
+    conda install -c conda-forge mamba
+    mamba create -c conda-forge -c bioconda -n snakemake snakemake
+
+For installation details, see the [instructions in the Snakemake documentation](https://snakemake.readthedocs.io/en/stable/getting_started/installation.html).
+
+### Step 4: Execute workflow
+
+Activate the conda environment:
+
+    conda activate snakemake
 
 Test your configuration by performing a dry-run via
 
-    snakemake -s ../workflow/Snakefile --use-conda -n
+    snakemake --use-conda -n
 
-Execute the workflow locally using `$N` cores via
+Execute the workflow locally using `$N` cores (or 'all' cores)
 
-    snakemake -s ../workflow/Snakefile --use-conda --cores $N
+    snakemake --use-conda --cores $N
 
-To download conda environment to a dedicated folder for multiple runs, use the `--conda-prefix` option.
+Use `--configfile` option to select a different config file.
+To download packages to a dedicated folder for multiple runs, use the `--conda-prefix` option.
 See the [Snakemake documentation](https://snakemake.readthedocs.io/en/stable/executable.html) for further details.
 
 To run snakemake in the background and pipe the terminal output to file, wrap the above commands 
