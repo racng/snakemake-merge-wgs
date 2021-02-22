@@ -3,7 +3,7 @@ import pandas as pd
 # Read sample sheet
 df = pd.read_csv(config["samples"], dtype=str)
 samples = list(df["sample name"].unique())
-# Filter samles:
+# Filter samples
 if len(config["include"]) > 0:
     samples = config["include"]
     
@@ -22,9 +22,12 @@ rule dbimport:
     input:
         gvcfs=get_patient_gvcf
     output:
-        directory("{outdir}/{sample}_db")
+        temp(directory("{outdir}/{sample}_db"))
+    log: 
+        "{outdir}/log/{sample}_dbimport.log"
     threads: config['threads']
     params:
+        #threads=config['threads'],
         regions=[f" -L {r}" for r in config['regions'].split(',')],
         gvcfs=lambda wildcards, input: [f" -V {v}" for v in input["gvcfs"]]
     shell:
@@ -32,7 +35,7 @@ rule dbimport:
         "{params.gvcfs} " 
         "--genomicsdb-workspace-path {output} "
         "{params.regions} "
-        "--max-num-intervals-to-import-in-parallel {threads}"
+        "--max-num-intervals-to-import-in-parallel {threads} &> {log}"
 
 # Joint calling on merged database 
 rule genotype:
@@ -40,52 +43,65 @@ rule genotype:
         db="{outdir}/{sample}_db",
         fa=expand("{refdir}/hg19.fa", refdir=config['refdir'])
     output:
-        "{outdir}/{sample}.genotype.vcf.gz"
+        vcf=temp("{outdir}/{sample}.genotype.vcf.gz"),
+        idx=temp("{outdir}/{sample}.genotype.vcf.gz.tbi")
+    log: 
+        "{outdir}/log/{sample}_genotype.log"
     shell:
         "gatk GenotypeGVCFs "
         "-R {input.fa} "
         "-V gendb://{input.db} "
-        "-O {output}"
+        "-O {output.vcf} &> {log}"
 
 # Extract variants, remove indels
 rule extract_variants:
     input:
-        "{outdir}/{sample}.genotype.vcf.gz"
+        vcf="{outdir}/{sample}.genotype.vcf.gz",
+        index="{outdir}/{sample}.genotype.vcf.gz.tbi"
     output:
-        "{outdir}/{sample}.var.vcf.gz"
+        vcf=temp("{outdir}/{sample}.var.vcf.gz"),
+        idx=temp("{outdir}/{sample}.var.vcf.gz.csi")
+    log: 
+        "{outdir}/log/{sample}_extract_var.log"
     conda:
         "../envs/crossmap.yaml"
     shell:
-        "vcftools --gzvcf {input} --remove-indels --recode --recode-INFO-all " 
-        "--stdout | bgzip > {output} && "
-        "bcftools index {output}"
+        "vcftools --gzvcf {input.vcf} --remove-indels --recode --recode-INFO-all " 
+        "--stdout | bgzip > {output.vcf} 2> {log} && "
+        "bcftools index {output.vcf}"
 
 # Keep variants in exons
 rule filter_exons:
     input:
         vcf="{outdir}/{sample}.var.vcf.gz",
+        idx="{outdir}/{sample}.var.vcf.gz.csi",
         bed=expand("{refdir}/hg19_exonp250.bed", refdir=config['refdir'])
     output:
-        "{outdir}/{sample}.var.exonp250_hg19.vcf.gz"
+        vcf=temp("{outdir}/{sample}.var.exonp250_hg19.vcf.gz"),
+        idx=temp("{outdir}/{sample}.var.exonp250_hg19.vcf.gz.csi")
     conda:
         "../envs/crossmap.yaml"
     shell:
         "bcftools view {input.vcf} -R {input.bed} -O u | "
-        "bcftools sort -O z -o {output} && "
-        "bcftools index {output}"
+        "bcftools sort -O z -o {output.vcf} && "
+        "bcftools index {output.vcf}"
 
 # Liftover from hg19 to hg38
 rule liftover:
     input:
         chain=expand("{refdir}/hg19ToHg38.over.chain.gz", refdir=config['refdir']),
         fa=expand("{refdir}/hg38.fa", refdir=config['refdir']),
-        vcf="{outdir}/{sample}.var.exonp250_hg19.vcf.gz"
+        vcf="{outdir}/{sample}.var.exonp250_hg19.vcf.gz",
+        idx="{outdir}/{sample}.var.exonp250_hg19.vcf.gz.csi"
     output:
         tvcf=temp("{outdir}/{sample}.var.exonp250_hg38_temp.vcf"),
+        unmap=temp("{outdir}/{sample}.var.exonp250_hg38_temp.vcf.unmap")
+    log: 
+        "{outdir}/log/{sample}_liftover.log"
     conda:
         "../envs/crossmap.yaml"
     shell:
-        "CrossMap.py vcf {input.chain} {input.vcf} {input.fa} {output.tvcf}"
+        "CrossMap.py vcf {input.chain} {input.vcf} {input.fa} {output.tvcf} &> {log}"
         
 # Remove troublesome KI27* contigs. Filter by regions.
 rule filter_regions:
