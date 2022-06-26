@@ -2,7 +2,9 @@ import pandas as pd
 
 # Read sample sheet
 df = pd.read_csv(config["samples"], dtype=str)
-samples = list(df["sample name"].unique())
+samples = list(df[config["pooled_sample_col"]].unique())
+#samples = list(df["sample name"].unique())
+print("Samples in sample sheet: ", *samples)
 # Filter samples
 if len(config["include"]) > 0:
     samples = config["include"]
@@ -10,7 +12,7 @@ if len(config["include"]) > 0:
 def get_patients(wildcards):
     inds = df[config['pooled_sample_col']]==wildcards.sample
     s = df.loc[inds, config['individual_sample_col']]
-    return s.str.extract(config["regex"])[0].values
+    return s.str.extract(config["regex"])[0].unique()
 
 
 def get_patient_gvcf(wildcards):
@@ -122,11 +124,5 @@ rule filter_regions:
         "bcftools index {output.tbcf} && "
         "bcftools view {output.tbcf} --regions {params.reg} -O z -o {output.vcf} && "
         "bcftools index {output.vcf}"
-
-
-
-
-
-
 
 
