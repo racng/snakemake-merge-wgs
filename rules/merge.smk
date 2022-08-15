@@ -8,7 +8,11 @@ print("Samples in sample sheet: ", *samples)
 # Filter samples
 if len(config["include"]) > 0:
     samples = config["include"]
-    
+
+# Parse regions
+regions = config['regions'].split(',')
+print("regions: ", regions)
+
 def get_patients(wildcards):
     inds = df[config['pooled_sample_col']]==wildcards.sample
     s = df.loc[inds, config['individual_sample_col']]
@@ -19,47 +23,66 @@ def get_patient_gvcf(wildcards):
     return [f"{config['datadir']}/{patient}.gvcf.gz" \
         for patient in get_patients(wildcards)]
 
+# wildcard_constraints:
+#     region="chr\d+"
+# ruleorder: dbimport > genotype > concat_vcf
+
 # Merge gvcf
 rule dbimport:
     input:
         gvcfs=get_patient_gvcf
     output:
-        temp(directory("{outdir}/{sample}_db"))
+        temp(directory("{outdir}/db_{sample}_{region}"))
     log: 
-        "{outdir}/log/{sample}_dbimport.log"
+        "{outdir}/log/{sample}_{region}_dbimport.log"
     threads: config['threads']
     params:
         #threads=config['threads'],
-        regions=[f" -L {r}" for r in config['regions'].split(',')],
+        # region=lambda wildcards, input: wildcards.region,
         gvcfs=lambda wildcards, input: [f" -V {v}" for v in input["gvcfs"]]
     shell:
         "gatk GenomicsDBImport "
         "{params.gvcfs} " 
         "--genomicsdb-workspace-path {output} "
-        "{params.regions} "
+        "-L {wildcards.region} "
         "--max-num-intervals-to-import-in-parallel {threads} &> {log}"
 
 # Joint calling on merged database 
 rule genotype:
     input:
-        db="{outdir}/{sample}_db",
+        db="{outdir}/db_{sample}_{region}",
         fa=expand("{refdir}/hg19.fa", refdir=config['refdir'])
     output:
-        vcf=temp("{outdir}/{sample}.genotype.vcf.gz"),
-        idx=temp("{outdir}/{sample}.genotype.vcf.gz.tbi")
+        vcf=temp("{outdir}/{sample}_{region}.genotype.vcf.gz"),
+        idx=temp("{outdir}/{sample}_{region}.genotype.vcf.gz.tbi")
     log: 
-        "{outdir}/log/{sample}_genotype.log"
+        "{outdir}/log/{sample}_{region}_genotype.log"
     shell:
         "gatk GenotypeGVCFs "
         "-R {input.fa} "
         "-V gendb://{input.db} "
         "-O {output.vcf} &> {log}"
 
+# Combine regions
+rule concat_vcf:
+    input:
+        vcfs=expand("{{outdir}}/{{sample}}_{region}.genotype.vcf.gz", region=regions)
+    output:
+        vcf="{outdir}/{sample}.combined_genotype.vcf.gz",
+        index="{outdir}/{sample}.combined_genotype.vcf.gz.csi"
+    log:
+        "{outdir}/log/{sample}_combine.log"
+    conda:
+        "../envs/crossmap.yaml"
+    shell:
+        "bcftools concat {input.vcfs} -O z -o {output.vcf} && "
+        "bcftools index {output.vcf}"
+
 # Extract variants, remove indels
 rule extract_variants:
     input:
-        vcf="{outdir}/{sample}.genotype.vcf.gz",
-        index="{outdir}/{sample}.genotype.vcf.gz.tbi"
+        vcf="{outdir}/{sample}.combined_genotype.vcf.gz",
+        index="{outdir}/{sample}.combined_genotype.vcf.gz.csi"
     output:
         vcf=temp("{outdir}/{sample}.var.vcf.gz"),
         idx=temp("{outdir}/{sample}.var.vcf.gz.csi")
