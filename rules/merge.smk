@@ -4,14 +4,14 @@ import pandas as pd
 df = pd.read_csv(config["samples"], dtype=str)
 samples = list(df[config["pooled_sample_col"]].unique())
 #samples = list(df["sample name"].unique())
-print("Samples in sample sheet: ", *samples)
+# print("Samples in sample sheet: ", *samples)
 # Filter samples
 if len(config["include"]) > 0:
     samples = config["include"]
 
 # Parse regions
 regions = config['regions'].split(',')
-print("regions: ", regions)
+# print("regions: ", regions)
 
 def get_patients(wildcards):
     inds = df[config['pooled_sample_col']]==wildcards.sample
