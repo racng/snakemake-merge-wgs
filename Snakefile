@@ -9,8 +9,10 @@ rule all:
         ancient(expand("{refdir}/hg19_exonp250.bed", refdir=config['refdir'])),
 	    ancient(expand("{refdir}/hg38.fa", refdir=config['refdir'])),
         ancient(expand("{refdir}/hg38.fa.fai", refdir=config['refdir'])),
+        ancient(expand("{refdir}/hg19.fa", refdir=config['refdir'])),
+        ancient(expand("{refdir}/hg19.fa.fai", refdir=config['refdir'])),
+        ancient(expand("{refdir}/hg19.dict", refdir=config['refdir'])),
         ancient(expand("{refdir}/hg19ToHg38.over.chain.gz", refdir=config['refdir'])),
-
         # Merged output per sample
         expand("{outdir}/{sample}.var.exonp250_hg38.vcf.gz", 
             outdir=config['outdir'], sample=samples),

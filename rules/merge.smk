@@ -51,7 +51,9 @@ rule dbimport:
 rule genotype:
     input:
         db="{outdir}/db_{sample}_{region}",
-        fa=expand("{refdir}/hg19.fa", refdir=config['refdir'])
+        fa=expand("{refdir}/hg19.fa", refdir=config['refdir']),
+        fai=expand("{refdir}/hg19.fa.fai", refdir=config['refdir']),
+        fadict=expand("{refdir}/hg19.dict", refdir=config['refdir'])
     output:
         vcf=temp("{outdir}/{sample}_{region}.genotype.vcf.gz"),
         idx=temp("{outdir}/{sample}_{region}.genotype.vcf.gz.tbi")
