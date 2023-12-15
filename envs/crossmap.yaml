@@ -1,15 +1,14 @@
 name: crossmap
 channels:
+ - conda-forge
  - bioconda
 dependencies:
- - python=3.6
+#  - python=3.6
  - samtools
  - vcftools
  - bcftools
  - gvcftools
  - curl
  - openssl=1.0
- - pip
- - pip:
-   - CrossMap
+ - crossmap
 
