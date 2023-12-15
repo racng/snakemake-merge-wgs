@@ -23,6 +23,13 @@ def get_patient_gvcf(wildcards):
     return [f"{config['datadir']}/{patient}.gvcf.gz" \
         for patient in get_patients(wildcards)]
 
+def get_genotype_args(wildcards):
+    try:
+        args = config['args']['genotype']
+    except:
+        args = ""
+    return args
+
 # wildcard_constraints:
 #     region="chr\d+"
 # ruleorder: dbimport > genotype > concat_vcf
@@ -35,7 +42,7 @@ rule dbimport:
         temp(directory("{outdir}/db_{sample}_{region}"))
     log: 
         "{outdir}/log/{sample}_{region}_dbimport.log"
-    threads: config['threads']
+    threads: config['threads']['dbimport']
     params:
         #threads=config['threads'],
         # region=lambda wildcards, input: wildcards.region,
@@ -59,11 +66,13 @@ rule genotype:
         idx=temp("{outdir}/{sample}_{region}.genotype.vcf.gz.tbi")
     log: 
         "{outdir}/log/{sample}_{region}_genotype.log"
+    params:
+        args=get_genotype_args
     shell:
         "gatk GenotypeGVCFs "
         "-R {input.fa} "
         "-V gendb://{input.db} "
-        "-O {output.vcf} &> {log}"
+        "-O {output.vcf} {params.args} &> {log}"
 
 # Combine regions
 rule concat_vcf:
@@ -72,13 +81,15 @@ rule concat_vcf:
     output:
         vcf="{outdir}/{sample}.combined_genotype.vcf.gz",
         index="{outdir}/{sample}.combined_genotype.vcf.gz.csi"
+    threads:
+        config['threads']['bcftools']
     log:
         "{outdir}/log/{sample}_combine.log"
     conda:
         "../envs/crossmap.yaml"
     shell:
-        "bcftools concat {input.vcfs} -O z -o {output.vcf} && "
-        "bcftools index {output.vcf}"
+        "bcftools concat {input.vcfs} --threads {threads} -O z -o {output.vcf} && "
+        "bcftools index --threads {threads} {output.vcf}"
 
 # Extract variants, remove indels
 rule extract_variants:
@@ -88,6 +99,8 @@ rule extract_variants:
     output:
         vcf=temp("{outdir}/{sample}.var.vcf.gz"),
         idx=temp("{outdir}/{sample}.var.vcf.gz.csi")
+    threads:
+        config['threads']['bcftools']
     log: 
         "{outdir}/log/{sample}_extract_var.log"
     conda:
@@ -95,7 +108,7 @@ rule extract_variants:
     shell:
         "vcftools --gzvcf {input.vcf} --remove-indels --recode --recode-INFO-all " 
         "--stdout | bgzip > {output.vcf} 2> {log} && "
-        "bcftools index {output.vcf}"
+        "bcftools index --threads {threads} {output.vcf}"
 
 # Keep variants in exons
 rule filter_exons:
@@ -106,12 +119,14 @@ rule filter_exons:
     output:
         vcf=temp("{outdir}/{sample}.var.exonp250_hg19.vcf.gz"),
         idx=temp("{outdir}/{sample}.var.exonp250_hg19.vcf.gz.csi")
+    threads:
+        config['threads']['bcftools']
     conda:
         "../envs/crossmap.yaml"
     shell:
         "bcftools view {input.vcf} -R {input.bed} -O u | "
         "bcftools sort -O z -o {output.vcf} && "
-        "bcftools index {output.vcf}"
+        "bcftools index --threads {threads} {output.vcf}"
 
 # Liftover from hg19 to hg38
 rule liftover:
@@ -139,6 +154,8 @@ rule filter_regions:
         tbcfi=temp("{outdir}/{sample}.var.exonp250_hg38_temp.bcf.csi"),
         vcf="{outdir}/{sample}.var.exonp250_hg38.vcf.gz",
         index="{outdir}/{sample}.var.exonp250_hg38.vcf.gz.csi"
+    threads:
+        config['threads']['bcftools']
     params:
         reg=config['regions']
     conda:
@@ -146,8 +163,8 @@ rule filter_regions:
     shell:
         "sed -i '/_KI27/d' {input.tvcf} && "
         "bcftools sort {input.tvcf} -O b -o {output.tbcf} && "
-        "bcftools index {output.tbcf} && "
-        "bcftools view {output.tbcf} --regions {params.reg} -O z -o {output.vcf} && "
-        "bcftools index {output.vcf}"
+        "bcftools index --threads {threads} {output.tbcf} && "
+        "bcftools view {output.tbcf} --regions {params.reg} --threads {threads} -O z -o {output.vcf} && "
+        "bcftools index --threads {threads} {output.vcf}"
 
 
